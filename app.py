@@ -5,13 +5,12 @@ from firebase_admin import credentials, db
 from datetime import datetime
 import time
 import pygame
-import threading
 
 # Initialize Firebase only once
 if not firebase_admin._apps:
-    cred = credentials.Certificate("firebase_key.json")
+    cred = credentials.Certificate("/Users/sana/Desktop/python/mood-app.py/firebase_key.json")  # <-- update with your actual path
     firebase_admin.initialize_app(cred, {
-        'databaseURL': 'https://your-project-id.firebaseio.com/'  # Replace with your actual Firebase URL
+        'databaseURL': 'https://mai-21-project-default-rtdb.firebaseio.com/'  # <-- update with your Firebase Realtime Database URL (no trailing slash)
     })
 
 # Start music in background (only once)
@@ -28,9 +27,9 @@ statuses = ["Studying", "Working", "Chilling", "Eating", "Out"]
 
 # Simple login
 st.title("💖 Mood Mirror App")
-user = st.selectbox("Who are you?", ["me", "partner"])
-is_me = user == "me"
-partner = "partner" if is_me else "me"
+user = st.selectbox("Who are you?", ["sana", "michael"])
+is_me = user == "sana"
+partner = "michael" if is_me else "sana"
 
 # Avatar image loader
 def load_image(mood, who):
@@ -48,20 +47,32 @@ st.write(f"**Mood:** {current_mood}")
 st.write(f"**Status:** {current_status}")
 
 if st.button("💌 Send Heart"):
-    now = time.time()
-    db.reference(user).update({
-        "sent_heart": True,
-        "sent_heart_time": now,
-        "last_update": now
-    })
-    st.success("Heart sent!")
+    now = int(time.time())
+    try:
+        db.reference(user).update({
+            "sent_heart": True,
+            "sent_heart_time": now,
+            "last_update": now
+        })
+        st.success("Heart sent!")
+    except Exception as e:
+        st.error(f"Failed to send heart: {e}")
 
-# Update Firebase
-db.reference(user).update({
-    "mood": current_mood,
-    "status": current_status,
-    "last_update": time.time()
-})
+# Debug print variables before update
+print("user:", user)
+print("current_mood:", current_mood)
+print("current_status:", current_status)
+
+# Update Firebase with error handling
+try:
+    db.reference(user).update({
+        "mood": current_mood,
+        "status": current_status,
+        "last_update": int(time.time())
+    })
+    print("Update successful!")
+except Exception as e:
+    print("Failed to update Firebase:", e)
 
 # Display partner
 st.header("Your Partner")
@@ -71,10 +82,11 @@ if partner_data:
     st.image(load_image(partner_data.get("mood", "Happy"), partner))
     st.write(f"**Mood:** {partner_data.get('mood', '')}")
     st.write(f"**Status:** {partner_data.get('status', '')}")
-    
+
     if partner_data.get("sent_heart"):
         ts = partner_data.get("sent_heart_time")
         time_str = datetime.fromtimestamp(ts).strftime("%H:%M") if ts else "Unknown"
         st.markdown(f"💌 Heart received at **{time_str}**")
 else:
     st.info("Waiting for partner to join...")
+
